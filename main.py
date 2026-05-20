@@ -1,17 +1,13 @@
 """
-تطبيق شحن كروت فكة - النسخة النهائية للـ APK
+تطبيق شحن كروت فكة - نسخة APK نهائية
 المطور: Hamada Ali | رقم التواصل: 01019466176
 """
-
 import flet as ft
 import requests
 import json
 import sqlite3
 import hashlib
 import threading
-import os
-import re
-from datetime import datetime
 
 # ======================== إعدادات التطبيق ========================
 STAR_PRICE = 2.5
@@ -19,35 +15,16 @@ MIN_STARS_PURCHASE = 40
 SUPPORT_PHONE = "01019466176"
 DEVELOPER_NAME = "Hamada Ali"
 
-# ======================== قائمة الكروت (27 كرت - كاملة) ========================
-PRODUCTS = [
-    {"id": "Fakka_2.5_Unite", "name": "45 وحدة - يوم", "price": "2.5"},
-    {"id": "Fakka_4.25_Unite", "name": "190 وحدة - يوم", "price": "4.25"},
-    {"id": "Fakka_5_Unite", "name": "225 وحدة - يوم", "price": "5"},
-    {"id": "Fakka_6_Unite", "name": "225 وحدة - يوم", "price": "6"},
-    {"id": "Fakka_7_Unite", "name": "400 وحدة - 4 أيام", "price": "7"},
-    {"id": "Fakka_9_Unite", "name": "400 وحدة - 4 أيام", "price": "9"},
-    {"id": "Fakka_10_Unite", "name": "450 وحدة - 7 أيام", "price": "10"},
-    {"id": "Fakka_10.5_Unite", "name": "450 وحدة - 7 أيام", "price": "10.5"},
-    {"id": "Fakka_11.5_Unite", "name": "450 وحدة - 7 أيام", "price": "11.5"},
-    {"id": "Fakka_12_Unite", "name": "625 وحدة - 7 أيام", "price": "12"},
-    {"id": "Fakka_12.5_Unite", "name": "625 وحدة - 7 أيام", "price": "12.5"},
-    {"id": "Fakka_13_Unite", "name": "650 وحدة - 10 أيام", "price": "13"},
-    {"id": "Fakka_13.5_Unite", "name": "650 وحدة - 10 أيام", "price": "13.5"},
-    {"id": "Fakka_15_Unite", "name": "650 وحدة - 10 أيام", "price": "15"},
-    {"id": "Fakka_15.5_Unite", "name": "750 وحدة - 10 أيام", "price": "15.5"},
-    {"id": "Fakka_16.5_Unite", "name": "750 وحدة - 10 أيام", "price": "16.5"},
-    {"id": "Fakka_17.5_Unite", "name": "650 وحدة - 10 أيام", "price": "17.5"},
-    {"id": "Fakka_20_Unite", "name": "750 وحدة - 10 أيام", "price": "20"},
-    {"id": "Fakka_26_Unite", "name": "750 وحدة - 10 أيام", "price": "26"},
-    {"id": "Fakka_5_NewUnite", "name": "باقة جديدة - 5", "price": "5"},
-    {"id": "Fakka_6_NewUnite", "name": "باقة جديدة - 6", "price": "6"},
-    {"id": "Fakka_10_NewUnite", "name": "باقة جديدة - 10", "price": "10"},
-    {"id": "Fakka_15_NewUnite", "name": "باقة جديدة - 15", "price": "15"},
-    {"id": "Fakka_19.5_NewUnite", "name": "باقة جديدة - 19.5", "price": "19.5"},
-    {"id": "Mared_10_Minuts", "name": "ماريد - 10 دقائق", "price": "10"},
-    {"id": "Mared_10_Flexs", "name": "ماريد - 10 فليكس", "price": "10"},
-    {"id": "Mared_10_Social", "name": "ماريد - 10 سوشيال", "price": "10"},
+# ======================== قائمة الكروت (من صورتك - 8 كروت فقط) ========================
+FAKKA_PRODUCTS = [
+    {"id": "Fakka_2.5_Unite", "name": "45 وحدة لمدة يوم", "price": "2.5 جنيه"},
+    {"id": "Fakka_4.25_Unite", "name": "190 وحدة لمدة يوم", "price": "4.25 جنيه"},
+    {"id": "Fakka_5_Unite", "name": "225 وحدة لمدة يوم", "price": "5 جنيه"},
+    {"id": "Fakka_9_Unite", "name": "400 وحدة لمدة 4 أيام", "price": "9 جنيه"},
+    {"id": "Fakka_11.5_Unite", "name": "450 وحدة لمدة 7 أيام", "price": "11.5 جنيه"},
+    {"id": "Fakka_13.5_Unite", "name": "625 وحدة لمدة 7 أيام", "price": "13.5 جنيه"},
+    {"id": "Fakka_17.5_Unite", "name": "650 وحدة لمدة 10 أيام", "price": "17.5 جنيه"},
+    {"id": "Fakka_20_Unite", "name": "750 وحدة لمدة 10 أيام", "price": "20 جنيه"},
 ]
 
 # ======================== دوال API فودافون (الأصلية) ========================
@@ -62,7 +39,7 @@ def get_seamless_and_msisdn():
     }
     resp = requests.get(url, params=params, headers=headers, timeout=30)
     if resp.status_code != 200:
-        raise Exception("فشل seamlessToken - تأكد من أن الداتا مفتوحة من شريحة فودافون")
+        raise Exception("فشل seamlessToken")
     data = resp.json()
     raw_msisdn = data.get("msisdn")
     if raw_msisdn and raw_msisdn.startswith('1'):
@@ -129,15 +106,15 @@ def purchase_product(selected_product, msisdn_sender, receiver, pin, access_toke
     return resp
 
 # ======================== قاعدة البيانات ========================
-DB_NAME = "fakka_app.db"
+DB_NAME = "fakka_shop.db"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
         stars INTEGER DEFAULT 0,
         is_admin INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -148,6 +125,7 @@ def init_db():
         receiver TEXT,
         product TEXT,
         status TEXT,
+        details TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS star_purchases (
@@ -161,13 +139,30 @@ def init_db():
         key TEXT PRIMARY KEY,
         value TEXT
     )''')
-    c.execute("INSERT OR IGNORE INTO settings VALUES ('star_price', '2.5')")
-    
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('star_price', ?)", (str(STAR_PRICE),))
     hashed = hashlib.sha256("admin123".encode()).hexdigest()
-    c.execute("INSERT OR IGNORE INTO users (username, password, stars, is_admin) VALUES (?, ?, ?, ?)",
-              ("admin", hashed, 999999, 1))
-    c.execute("INSERT OR IGNORE INTO users (username, password, stars, is_admin) VALUES (?, ?, ?, ?)",
-              ("test", hashed, 50, 0))
+    try:
+        c.execute("INSERT INTO users (username, password, stars, is_admin) VALUES (?, ?, ?, ?)",
+                  ("admin", hashed, 0, 1))
+        c.execute("INSERT INTO users (username, password, stars, is_admin) VALUES (?, ?, ?, ?)",
+                  ("test", hashed, 50, 0))
+    except:
+        pass
+    conn.commit()
+    conn.close()
+
+def get_star_price():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key = 'star_price'")
+    row = c.fetchone()
+    conn.close()
+    return float(row[0]) if row else STAR_PRICE
+
+def set_star_price(price):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE settings SET value = ? WHERE key = 'star_price'", (str(price),))
     conn.commit()
     conn.close()
 
@@ -175,14 +170,6 @@ def get_user(username):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT id, username, password, stars, is_admin FROM users WHERE username = ?", (username,))
-    user = c.fetchone()
-    conn.close()
-    return user
-
-def get_user_by_id(user_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT id, username, stars, is_admin FROM users WHERE id = ?", (user_id,))
     user = c.fetchone()
     conn.close()
     return user
@@ -219,21 +206,31 @@ def deduct_star(user_id):
     conn.close()
     return affected > 0
 
-def log_transaction(user_id, receiver, product, status):
+def log_transaction(user_id, receiver, product, status, details=""):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("INSERT INTO transactions (user_id, receiver, product, status) VALUES (?, ?, ?, ?)",
-              (user_id, receiver, product, status))
+    c.execute("INSERT INTO transactions (user_id, receiver, product, status, details) VALUES (?,?,?,?,?)",
+              (user_id, receiver, product, status, details))
     conn.commit()
     conn.close()
 
-def get_user_stars(user_id):
+def get_all_users():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("SELECT stars FROM users WHERE id = ?", (user_id,))
-    row = c.fetchone()
+    c.execute("SELECT id, username, stars, is_admin FROM users")
+    users = c.fetchall()
     conn.close()
-    return row[0] if row else 0
+    return users
+
+def get_transactions(limit=100):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''SELECT t.id, u.username, t.receiver, t.product, t.status, t.created_at 
+                 FROM transactions t JOIN users u ON t.user_id = u.id 
+                 ORDER BY t.created_at DESC LIMIT ?''', (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
 
 def update_user_stars(user_id, new_stars):
     conn = sqlite3.connect(DB_NAME)
@@ -249,42 +246,9 @@ def delete_user(user_id):
     conn.commit()
     conn.close()
 
-def get_all_users():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT id, username, stars, is_admin FROM users")
-    users = c.fetchall()
-    conn.close()
-    return users
-
-def get_transactions(limit=50):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''SELECT t.id, u.username, t.receiver, t.product, t.status, t.created_at 
-                 FROM transactions t JOIN users u ON t.user_id = u.id 
-                 ORDER BY t.created_at DESC LIMIT ?''', (limit,))
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def get_star_price():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT value FROM settings WHERE key = 'star_price'")
-    row = c.fetchone()
-    conn.close()
-    return float(row[0]) if row else 2.5
-
-def set_star_price(price):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("UPDATE settings SET value = ? WHERE key = 'star_price'", (str(price),))
-    conn.commit()
-    conn.close()
-
 init_db()
 
-# ======================== واجهة التطبيق الاحترافية ========================
+# ======================== واجهة التطبيق ========================
 def main(page: ft.Page):
     page.title = "شحن كروت فكه - Hamada Ali"
     page.theme_mode = ft.ThemeMode.DARK
@@ -292,18 +256,17 @@ def main(page: ft.Page):
     page.window_width = 400
     page.window_height = 700
     page.window_resizable = False
-    page.padding = 0
+    page.padding = 20
 
     session_user_id = None
     session_username = None
     session_is_admin = False
     session_user_stars = 0
 
-    def show_snackbar(msg, is_error=False):
+    def show_snackbar(message, is_error=False):
         page.snack_bar = ft.SnackBar(
-            content=ft.Text(msg, color=ft.Colors.WHITE),
-            bgcolor=ft.Colors.RED_400 if is_error else ft.Colors.GREEN_400,
-            duration=3000
+            content=ft.Text(message, color=ft.Colors.WHITE),
+            bgcolor=ft.Colors.RED_400 if is_error else ft.Colors.GREEN_400
         )
         page.snack_bar.open = True
         page.update()
@@ -329,14 +292,14 @@ def main(page: ft.Page):
             if success:
                 if deduct_star(session_user_id):
                     session_user_stars -= 1
-                    log_transaction(session_user_id, receiver, product_name, "نجاح")
-                    show_snackbar(f"✅ تم شحن {product_name} بنجاح")
+                    log_transaction(session_user_id, receiver, product_name, "نجاح", "تم الشحن")
+                    show_snackbar(f"✅ تم شحن {product_name} للرقم {receiver}")
                     return True
                 else:
                     show_snackbar("❌ فشل خصم النجمة", True)
                     return False
             else:
-                log_transaction(session_user_id, receiver, product_name, "فشل")
+                log_transaction(session_user_id, receiver, product_name, "فشل", f"HTTP {response.status_code}")
                 show_snackbar("❌ فشل الشحن - تأكد من الرقم السري", True)
                 return False
         except Exception as e:
@@ -445,12 +408,12 @@ def main(page: ft.Page):
         selected_product_index = 0
 
         product_list = ft.Column()
-        for i, product in enumerate(PRODUCTS):
+        for i, product in enumerate(FAKKA_PRODUCTS):
             product_list.controls.append(
                 ft.Container(
                     content=ft.Row([
                         ft.Text(product["name"], expand=True, color=ft.Colors.WHITE),
-                        ft.Text(f"{product['price']} جنيه", color=ft.Colors.AMBER, weight=ft.FontWeight.BOLD),
+                        ft.Text(product["price"], color=ft.Colors.AMBER, weight=ft.FontWeight.BOLD),
                     ]),
                     padding=12,
                     bgcolor=ft.Colors.AMBER_800 if i == 0 else ft.Colors.GREY_900,
@@ -503,7 +466,7 @@ def main(page: ft.Page):
                 show_snackbar("❌ أدخل الرقم السري 6 أرقام", True)
                 return
 
-            product = PRODUCTS[selected_product_index]
+            product = FAKKA_PRODUCTS[selected_product_index]
 
             page.splash = ft.ProgressBar()
             page.update()
@@ -677,7 +640,7 @@ def main(page: ft.Page):
                     show_snackbar("❌ السعر يجب أن يكون أكبر من 0", True)
                     return
                 set_star_price(new_price)
-                show_snackbar(f"✅ تم تغيير سعر النجمة إلى {new_price} جنيه")
+                show_snackbar(f"✅ تم تغيير السعر إلى {new_price} جنيه")
                 admin_screen()
             except:
                 show_snackbar("❌ أدخل رقماً صحيحاً", True)
@@ -749,5 +712,4 @@ def main(page: ft.Page):
 
     login_screen()
 
-if __name__ == "__main__":
-    ft.app(target=main)
+ft.app(target=main)
