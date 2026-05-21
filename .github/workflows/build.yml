@@ -1,0 +1,39 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Flutter 3.41.7
+        run: |
+          wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.24.5-stable.tar.xz
+          tar xf flutter_linux_3.24.5-stable.tar.xz
+          echo "$PWD/flutter/bin" >> $GITHUB_PATH
+
+      - name: Install Flet
+        run: pip install flet==0.85.1
+
+      - name: Set Flutter path for Flet
+        run: |
+          echo "FLET_FLUTTER_DIR=$PWD/flutter" >> $GITHUB_ENV
+
+      - name: Build APK
+        run: echo "y" | flet build apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fakka-apk
+          path: build/apk/*.apk
