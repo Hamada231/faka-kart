@@ -1,2 +1,2 @@
-Flutter 3.41.7 
+Flutter==3.41.7 
 requests
